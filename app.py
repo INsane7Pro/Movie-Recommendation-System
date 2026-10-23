@@ -55,11 +55,12 @@ except Exception as e:
 
 
 # Recommend similar movies
+
 def rcmd(movie):
     global data, similarity_matrix
 
     if data is None or similarity_matrix is None:
-        return "Movie dataset could not be loaded. Check main_data.csv."
+        return "ERROR: Movie dataset or similarity matrix failed to load."
 
     movie = movie.strip().casefold()
 
@@ -71,27 +72,40 @@ def rcmd(movie):
         .str.casefold()
     )
 
-    matches = data.index[titles == movie]
+    # Find the actual row position, not the DataFrame index label
+    matches = np.flatnonzero(titles.to_numpy() == movie)
 
     if len(matches) == 0:
-        return (
-            "Movie not found. Please select a movie from "
-            "the suggestions list or check the spelling."
-        )
+        suggestions = data.loc[
+            titles.str.contains(movie, regex=False, na=False),
+            "movie_title"
+        ].head(10).tolist()
 
-    movie_index = matches[0]
+        if suggestions:
+            return "Movie not found. Similar titles: " + ", ".join(suggestions)
 
-    scores = list(enumerate(similarity_matrix[movie_index]))
+        return f"Movie not found in dataset: {movie}"
+
+    movie_position = int(matches[0])
+
+    scores = list(enumerate(similarity_matrix[movie_position]))
     scores.sort(key=lambda item: item[1], reverse=True)
 
-    # Exclude the selected movie
-    scores = [
-        item for item in scores if item[0] != movie_index
-    ][:10]
+    recommendations = []
+    for position, score in scores:
+        if position == movie_position:
+            continue
 
-    return data.iloc[
-        [item[0] for item in scores]
-    ]["movie_title"].tolist()
+        title = str(data.iloc[position]["movie_title"]).strip()
+
+        if title and title not in recommendations:
+            recommendations.append(title)
+
+        if len(recommendations) == 10:
+            break
+
+    return recommendations
+
 
 
 # Convert serialized lists to Python lists
@@ -271,8 +285,6 @@ def recommend():
     )
 
 
-if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1", port=5000)
 if __name__ == "__main__":
     print("Avatar test:", rcmd("Avatar"))
     app.run(debug=True, host="127.0.0.1", port=5000)

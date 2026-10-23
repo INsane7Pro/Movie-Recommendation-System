@@ -49,7 +49,7 @@ function load_details(my_api_key,title){
         $('.results').delay(1000).css('display','block');
         var movie_id = movie.results[0].id;
         var movie_title = movie.results[0].original_title;
-        movie_recs(movie_title,movie_id,my_api_key);
+movie_recs(title, movie_id, my_api_key);
       }
     },
     error: function(){
